@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import './CustomCalendar.css';
+import BudgetSettings from './BudgetSettings';
+import BudgetAnalysis from './BudgetAnalysis';
 
 function formatYen(num) {
   return num.toLocaleString('ja-JP', { style: 'currency', currency: 'JPY' });
@@ -11,6 +13,36 @@ export default function App() {
   const [records, setRecords] = useState([]);
   const [form, setForm] = useState({ type: '支出', amount: '', memo: '', date: new Date() });
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [budget, setBudget] = useState({
+    balance: 0,
+    targetAmount: 0,
+    targetDate: '',
+    monthlyIncome: 0
+  });
+
+  // データの読み込み
+  useEffect(() => {
+    const savedRecords = localStorage.getItem('kakeibo-records');
+    const savedBudget = localStorage.getItem('kakeibo-budget');
+    
+    if (savedRecords) {
+      setRecords(JSON.parse(savedRecords));
+    }
+    
+    if (savedBudget) {
+      setBudget(JSON.parse(savedBudget));
+    }
+  }, []);
+
+  // データの保存
+  useEffect(() => {
+    localStorage.setItem('kakeibo-records', JSON.stringify(records));
+  }, [records]);
+
+  const handleBudgetChange = (newBudget) => {
+    setBudget(newBudget);
+    localStorage.setItem('kakeibo-budget', JSON.stringify(newBudget));
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -34,9 +66,14 @@ export default function App() {
   const total = records.reduce((acc, r) => acc + (r.type === '収入' ? r.amount : -r.amount), 0);
 
   return (
-    <div style={{ maxWidth: 400, margin: '2rem auto', fontFamily: 'sans-serif' }}>
-      <h1>家計簿</h1>
-      <div style={{ marginBottom: 20 }}>
+    <div style={{ maxWidth: 800, margin: '2rem auto', fontFamily: 'sans-serif' }}>
+      <h1>🏠 家計簿アプリ</h1>
+      
+      <BudgetSettings budget={budget} onBudgetChange={handleBudgetChange} />
+      <BudgetAnalysis budget={budget} records={records} />
+      
+      <div style={{ marginTop: 30, marginBottom: 20 }}>
+        <h2>📅 収支記録</h2>
         <Calendar
           onChange={handleDateChange}
           value={selectedDate}
@@ -68,6 +105,9 @@ export default function App() {
           }}
         />
       </div>
+      
+      <div style={{ marginTop: 20 }}>
+        <h3>📝 新規記録</h3>
       <form onSubmit={handleSubmit} style={{ marginBottom: 20 }}>
         <select name="type" value={form.type} onChange={handleChange}>
           <option value="支出">支出</option>
@@ -112,6 +152,7 @@ export default function App() {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
